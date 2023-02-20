@@ -1,0 +1,33 @@
+version: '3'
+
+services:
+  app1:
+    image: golang:1.19-alpine
+    volumes:
+      - ./:/sebastian:ro
+    working_dir: /sebastian
+    expose:
+      - 7946
+    entrypoint: "go run . -name=node1 -masterAddr=10.254.249.10"
+    networks:
+      fixed_compose_network:
+        ipv4_address: 10.254.249.10
+
+  app2:
+    image: golang:1.19-alpine
+    volumes:
+      - ./:/sebastian:ro
+    working_dir: /sebastian
+    expose:
+      - 7946
+    entrypoint: "go run . -name=node2 -masterAddr=10.254.249.10"
+    networks:
+      fixed_compose_network:
+        ipv4_address: 10.254.249.20
+
+networks:
+  fixed_compose_network:
+    ipam:
+      driver: default
+      config:
+        - subnet: 10.254.249.0/24

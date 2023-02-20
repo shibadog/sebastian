@@ -6,7 +6,8 @@
 	"image": "mcr.microsoft.com/devcontainers/go:0-1.19",
 	"features": {
 		"ghcr.io/devcontainers/features/git-lfs:1": {},
-		"ghcr.io/guiyomh/features/golangci-lint:0": {}
+		"ghcr.io/guiyomh/features/golangci-lint:0": {},
+		"ghcr.io/devcontainers/features/docker-in-docker:1": {}
 	},
 	"customizations": {
 		"vscode": {
