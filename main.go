@@ -1,10 +1,14 @@
 package main
 
 import (
+	"context"
 	"flag"
+	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 	"time"
 
@@ -12,11 +16,14 @@ import (
 )
 
 func main() {
-	// https://qiita.com/octu0/items/808299d232bc003d5e99
+	var wg sync.WaitGroup
+	wg.Add(1)
+
 	nodeName := flag.String("name", "hoge", "node name")
 	masterNode := flag.String("masterAddr", "127.0.0.1", "master addr")
 	flag.Parse()
 
+	// coluster settings
 	conf := memberlist.DefaultLocalConfig()
 	conf.Name = *nodeName
 
@@ -39,17 +46,35 @@ func main() {
 		log.Printf("Member: %s(%s:%d)", member.Name, member.Addr.To4().String(), member.Port)
 	}
 
+	// 終了ログ
 	defer func() {
 		log.Printf("bye")
 	}()
-	signal_chan := make(chan os.Signal, 2)
-	signal.Notify(signal_chan, syscall.SIGTERM)
-	signal.Notify(signal_chan, syscall.SIGINT)
 
-	log.Printf("wait for signal: pid=%d", os.Getpid())
-	for {
+	// http
+	var server http.Server
+	go func() {
+		defer wg.Done()
+
+		server = http.Server{
+			Addr:    ":8000",
+			Handler: http.HandlerFunc(requestHander),
+		}
+
+		if err := server.ListenAndServe(); err != nil {
+			log.Print(err)
+		}
+	}()
+
+	// 終了条件
+	sigCh := make(chan os.Signal, 2)
+	signal.Notify(sigCh, syscall.SIGTERM)
+	signal.Notify(sigCh, syscall.SIGINT)
+
+	go func() {
+		log.Printf("wait for signal: pid=%d", os.Getpid())
 		select {
-		case s := <-signal_chan:
+		case s := <-sigCh:
 			switch s {
 			case syscall.SIGINT:
 				log.Printf("SIGINT happen. cluter leaving")
@@ -58,10 +83,32 @@ func main() {
 					log.Fatal(err)
 				}
 				log.Printf("cluter left.")
+				ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
+				if err := server.Shutdown(ctx); err != nil {
+					log.Print(err)
+				}
 			case syscall.SIGTERM:
 				log.Printf("SIGTERM happen. bye.")
-				return
+				ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
+				if err := server.Shutdown(ctx); err != nil {
+					log.Print(err)
+				}
 			}
 		}
+	}()
+
+	// メインスレッドを待機
+	wg.Wait()
+}
+
+func requestHander(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "GET" {
+		fmt.Fprintln(w, "GET called!!")
+	} else if r.Method == "POST" {
+		fmt.Fprintln(w, "POST called!!")
+	} else if r.Method == "PUT" {
+		fmt.Fprintln(w, "PUT called!!")
+	} else if r.Method == "DELETE" {
+		fmt.Fprintln(w, "DELETE called!!")
 	}
 }

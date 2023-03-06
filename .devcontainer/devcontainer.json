@@ -12,7 +12,10 @@
 	"customizations": {
 		"vscode": {
 			"extensions": [
-				"mhutchie.git-graph"
+				"mhutchie.git-graph",
+				"yzhang.markdown-all-in-one",
+				"taichi.vscode-textlint",
+				"hediet.vscode-drawio"
 			]
 		}
 	}
